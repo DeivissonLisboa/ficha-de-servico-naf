@@ -1,0 +1,5 @@
+prints/
+*.csv
+geckodriver.log
+playground.py
+tempCodeRunnerFile.py
