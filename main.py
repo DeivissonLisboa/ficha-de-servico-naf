@@ -1,7 +1,10 @@
 import pandas as pd
 from selenium import webdriver
-import time, os
+from selenium.webdriver.chrome.service import Service
+import time, os, platform
 
+
+current_os = platform.system()
 
 ATENDIMENTOS = pd.read_csv("Controle de Atendimentos 2023.xlsx - Página3.csv")
 URL = "https://www.gov.br/receitafederal/pt-br/assuntos/educacao-fiscal/educacao-fiscal/naf/naf-questionarios/questionario-servico-prestado"
@@ -11,7 +14,16 @@ def main():
     if not os.path.exists("./prints"):
         os.mkdir("prints")
 
-    driver = webdriver.Firefox()
+    if current_os == "Linux":
+        geckodriver_path = os.path.join("geckodriver", "geckodriver")
+    elif current_os == "Windows":
+        geckodriver_path = os.path.join("geckodriver", "geckodriver.exe")
+    else:
+        raise Exception(f"Unsupported operating system: {current_os}")
+
+    service = Service(geckodriver_path)
+
+    driver = webdriver.Firefox(service=service)
 
     driver.get(URL)
 
