@@ -10,16 +10,28 @@ ATENDIMENTOS = pd.read_csv("Controle de Atendimentos 2023.xlsx - Página3.csv")
 URL = "https://www.gov.br/receitafederal/pt-br/assuntos/educacao-fiscal/educacao-fiscal/naf/naf-questionarios/questionario-servico-prestado"
 
 
-def main():
-    if not os.path.exists("./prints"):
-        os.mkdir("prints")
+def makeDir(name):
+    if not os.path.exists(f"./{name}"):
+        os.mkdir(name)
 
+    return os.path.join(".", name)
+
+
+def getGeckodriverPath():
     if current_os == "Linux":
         geckodriver_path = os.path.join("geckodriver", "geckodriver")
     elif current_os == "Windows":
         geckodriver_path = os.path.join("geckodriver", "geckodriver.exe")
     else:
         raise Exception(f"Unsupported operating system: {current_os}")
+
+    return geckodriver_path
+
+
+def main():
+    prints_path = makeDir("prints")
+    
+    geckodriver_path = getGeckodriverPath()
 
     service = Service(geckodriver_path)
 
@@ -32,9 +44,8 @@ def main():
         "document.getElementById('govbr-login-overlay-wrapper').click()"
     )
     driver.execute_script("document.querySelector('button.reject-all').click()")
-    # driver.execute_script("document.querySelector('header#site-header').remove()")
 
-    time.sleep(30)
+    time.sleep(15)
 
     # Loop sobre todos os atendimentos para lançamento
     for row in ATENDIMENTOS.head().iterrows():
