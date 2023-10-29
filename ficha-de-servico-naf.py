@@ -4,8 +4,6 @@ from selenium.webdriver.chrome.service import Service
 import time, os, platform
 
 
-current_os = platform.system()
-
 ATENDIMENTOS = pd.read_csv("Controle de Atendimentos 2023.xlsx - Página3.csv")
 URL_RFB = "https://www.gov.br/receitafederal/pt-br/assuntos/educacao-fiscal/educacao-fiscal/naf/naf-questionarios/questionario-servico-prestado"
 
@@ -18,6 +16,9 @@ def makeDir(name):
 
 
 def getGeckodriverPath():
+    current_os = platform.system()
+    print(f"firefox geckodriver for {current_os}")
+
     if current_os == "Linux":
         geckodriver_path = os.path.join("geckodriver", "geckodriver")
     elif current_os == "Windows":
@@ -32,7 +33,7 @@ def atendimentoValido(atendimento):
     is_conclusivo = atendimento[7]
     alread_sended = atendimento[8]
 
-    return (is_conclusivo == "Conclusivo" and alread_sended == "NÃO")
+    return is_conclusivo == "Conclusivo" and alread_sended == "NÃO"
 
 
 def preencher_formulario(driver, atendimento):
@@ -41,7 +42,6 @@ def preencher_formulario(driver, atendimento):
     cpf = atendimento[4]
     historico = atendimento[5]
     modalidade = atendimento[9]
-    
 
     # Seleciona BA - UFBA - SALVADOR como instituição de ensino
     driver.execute_script(
@@ -138,11 +138,12 @@ def tirar_print(driver, save_path):
 
 def main():
     prints_path = makeDir("prints")
-    
+
     geckodriver_path = getGeckodriverPath()
 
     service = Service(geckodriver_path)
 
+    print("Iniciando o navegador...")
     driver = webdriver.Firefox(service=service)
 
     driver.get(URL_RFB)
@@ -164,15 +165,16 @@ def main():
             preencher_formulario(driver, atendimento)
 
             time.sleep(5)
-            
+
             # Tira screenshot da página de confirmação
-            tirar_print(driver, prints_path)    
+            tirar_print(driver, prints_path)
         else:
             print(f"Não conclusivo ou já enviado - {historico}")
             continue
 
         driver.get(URL_RFB)
 
+    print("Fechando navegador...")
     driver.close()
 
 
