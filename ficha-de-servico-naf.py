@@ -1,6 +1,7 @@
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
 import time, os, platform
 
 
@@ -40,8 +41,11 @@ def preencher_formulario(driver, atendimento):
     data = atendimento[0]
     dia, mes, ano = data.split("/")
     cpf = atendimento[4]
-    historico = atendimento[5]
+    servico_atendimento = atendimento[2]
+    historico_atendimento = atendimento[5]
     modalidade = atendimento[9]
+
+    # print(f"Preenchendo atendimento de {data}")
 
     # Seleciona BA - UFBA - SALVADOR como instituição de ensino
     driver.execute_script(
@@ -71,6 +75,7 @@ def preencher_formulario(driver, atendimento):
 
     # Seleciona a modalidade do atendimento
     radio_modalidade = ""
+
     if modalidade == "PRESENCIAL":
         radio_modalidade = "document.getElementById('modalidade-de-atendimento_1')"
     else:
@@ -103,7 +108,19 @@ def preencher_formulario(driver, atendimento):
         """
     )
 
-    # Seleciona tipo de atendimento: "outro"
+    # Seleciona tipo de atendimento
+    container_tipos_de_servico = driver.find_element(By.ID, "tipo-de-atendimento")
+
+    tipos_de_servico_rfb = container_tipos_de_servico.find_elements(
+        By.TAG_NAME, "label"
+    )
+
+    for tipo_de_servico_rfb in tipos_de_servico_rfb:
+        texto_servico = tipo_de_servico_rfb.text
+
+        if servico_atendimento == texto_servico:
+            tipo_de_servico_rfb.click()
+
     driver.execute_script(
         """
             let outro_checkbox = document.getElementById('tipo-de-atendimento_23')
@@ -117,7 +134,7 @@ def preencher_formulario(driver, atendimento):
         f"""
             let input_descricao = document.getElementById('se-respondeu-outro-especifique-aqui')
 
-            input_descricao.value = '{historico}'
+            input_descricao.value = '{historico_atendimento}'
         """
     )
 
@@ -157,9 +174,9 @@ def main():
     time.sleep(5)
 
     # Loop sobre todos os atendimentos para lançamento
-    for row in ATENDIMENTOS.head().iterrows():
+    for row in ATENDIMENTOS.iterrows():
         atendimento = row[1]
-        historico = atendimento[5]
+        historico_atendimento = atendimento[5]
 
         if atendimentoValido(atendimento):
             preencher_formulario(driver, atendimento)
@@ -169,7 +186,7 @@ def main():
             # Tira screenshot da página de confirmação
             tirar_print(driver, prints_path)
         else:
-            print(f"Não conclusivo ou já enviado - {historico}")
+            print(f"Não conclusivo ou já enviado - {historico_atendimento}")
             continue
 
         driver.get(URL_RFB)
