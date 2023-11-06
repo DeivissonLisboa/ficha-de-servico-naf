@@ -162,6 +162,7 @@ cython_debug/
 
 prints/
 *.csv
+!exemplo_atendimentos.csv
 geckodriver.log
 playground.py
 tempCodeRunnerFile.py
