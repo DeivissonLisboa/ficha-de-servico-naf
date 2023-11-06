@@ -5,7 +5,6 @@ from selenium.webdriver.common.by import By
 import time, os, platform
 
 
-ATENDIMENTOS = pd.read_csv("Controle de Atendimentos 2023.xlsx - Página3.csv")
 URL_RFB = "https://www.gov.br/receitafederal/pt-br/assuntos/educacao-fiscal/educacao-fiscal/naf/naf-questionarios/questionario-servico-prestado"
 
 
@@ -154,6 +153,10 @@ def tirar_print(driver, save_path):
 
 
 def main():
+    atendimentos_path = input("Caminho para o arquivo .csv: ")
+
+    atendimentos = [item[1] for item in pd.read_csv(atendimentos_path).iterrows()]
+
     prints_path = makeDir("prints")
 
     geckodriver_path = getGeckodriverPath()
@@ -174,8 +177,7 @@ def main():
     time.sleep(5)
 
     # Loop sobre todos os atendimentos para lançamento
-    for row in ATENDIMENTOS.iterrows():
-        atendimento = row[1]
+    for atendimento in atendimentos:
         historico_atendimento = atendimento[5]
 
         if atendimentoValido(atendimento):
@@ -186,7 +188,7 @@ def main():
             # Tira screenshot da página de confirmação
             tirar_print(driver, prints_path)
         else:
-            print(f"Não conclusivo ou já enviado - {historico_atendimento}")
+            # print(f"Não conclusivo ou já enviado - {historico_atendimento}")
             continue
 
         driver.get(URL_RFB)
