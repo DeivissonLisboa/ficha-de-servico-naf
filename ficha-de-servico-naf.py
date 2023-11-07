@@ -7,7 +7,6 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 
 
-# TODO: seletor de arquivos .csv
 # TODO: marcar atendimento como enviado no arquivo .csv
 # TODO: prints em pastas da data de envio
 
@@ -18,6 +17,23 @@ def makeDir(path):
     if not os.path.exists(path):
         os.mkdir(path)
     return path
+
+
+def getCsvFile():
+    csv_files = [file for file in os.listdir(os.getcwd()) if file.endswith(".csv")]
+
+    for i, filename in enumerate(csv_files):
+        print(f"{i}: {filename}")
+
+    more = len(csv_files) + 1
+    print(f"{more}: Outro...")
+
+    selection = int(input("Digite o número do arquivo de atendimentos: "))
+
+    if selection == more:
+        return input("Caminho para o arquivo .csv: ")
+    else:
+        return csv_files[selection]
 
 
 def getGeckodriverPath():
@@ -122,7 +138,7 @@ def takeScreenshot(driver, save_path):
 
 
 def main():
-    atendimentos_path = input("Caminho para o arquivo .csv: ")
+    atendimentos_path = getCsvFile()
 
     atendimentos = pd.read_csv(atendimentos_path).to_numpy()
 
@@ -147,8 +163,6 @@ def main():
 
     # Loop sobre todos os atendimentos para lançamento
     for atendimento in atendimentos:
-        historico_atendimento = atendimento[5]
-
         if isValidAtendimento(atendimento):
             fillForm(driver, atendimento)
             time.sleep(5)
@@ -156,7 +170,7 @@ def main():
             # Tira screenshot da página de confirmação
             takeScreenshot(driver, prints_path)
         else:
-            # print(f"Não conclusivo ou já enviado - {historico_atendimento}")
+            # Não conclusivo ou já enviado
             continue
 
         driver.get(URL_RFB)
