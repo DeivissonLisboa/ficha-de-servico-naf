@@ -1,151 +1,120 @@
+import os
+import platform
+import time
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-import time, os, platform
 
+
+# TODO: seletor de arquivos .csv
+# TODO: marcar atendimento como enviado no arquivo .csv
+# TODO: prints em pastas da data de envio
 
 URL_RFB = "https://www.gov.br/receitafederal/pt-br/assuntos/educacao-fiscal/educacao-fiscal/naf/naf-questionarios/questionario-servico-prestado"
 
 
-def makeDir(name):
-    if not os.path.exists(f"./{name}"):
-        os.mkdir(name)
-
-    return os.path.join(".", name)
+def makeDir(path):
+    if not os.path.exists(path):
+        os.mkdir(path)
+    return path
 
 
 def getGeckodriverPath():
     current_os = platform.system()
-    print(f"firefox geckodriver for {current_os}")
+    print(f"Firefox geckodriver for {current_os}")
 
     if current_os == "Linux":
-        geckodriver_path = os.path.join("geckodriver", "geckodriver")
+        geckodriver_path = os.path.join("geckodrivers", "geckodriver")
     elif current_os == "Windows":
-        geckodriver_path = os.path.join("geckodriver", "geckodriver.exe")
+        geckodriver_path = os.path.join("geckodrivers", "geckodriver.exe")
     else:
         raise Exception(f"Unsupported operating system: {current_os}")
 
     return geckodriver_path
 
 
-def atendimentoValido(atendimento):
-    is_conclusivo = atendimento[7]
-    alread_sended = atendimento[8]
-
-    return is_conclusivo == "Conclusivo" and alread_sended == "NÃO"
+def isValidAtendimento(atendimento):
+    is_conclusivo, already_sent = atendimento[7], atendimento[8]
+    return is_conclusivo == "Conclusivo" and already_sent == "NÃO"
 
 
-def preencher_formulario(driver, atendimento):
-    data = atendimento[0]
-    dia, mes, ano = data.split("/")
-    cpf = atendimento[4]
-    servico_atendimento = atendimento[2]
-    historico_atendimento = atendimento[5]
-    modalidade = atendimento[9]
-
-    # print(f"Preenchendo atendimento de {data}")
+def fillForm(driver, atendimento):
+    data, cpf, servico_atendimento, historico_atendimento, modalidade = (
+        atendimento[0],
+        atendimento[4],
+        atendimento[2],
+        atendimento[5],
+        atendimento[9],
+    )
+    day, month, year = map(int, data.split("/"))
 
     # Seleciona BA - UFBA - SALVADOR como instituição de ensino
     driver.execute_script(
-        """
-            let instituicao = document.getElementById("instituicao-responsavel-pelo-atendimento")
-                            
-            instituicao.selectedIndex = 37
-        """
+        "document.getElementById('instituicao-responsavel-pelo-atendimento').selectedIndex = 37"
     )
 
     # Seleciona dia, mês e ano
     driver.execute_script(
-        f"""
-            let year = document.getElementById("edit_form_data-de-atendimento_0_year")
-                            
-            year.selectedIndex = year.childElementCount - 1 
-
-            let month = document.getElementById("edit_form_data-de-atendimento_0_month")
-
-            month.selectedIndex = {int(mes)}
-
-            let day = document.getElementById("edit_form_data-de-atendimento_0_day")
-                            
-            day.selectedIndex = {int(dia)}
-        """
+        f"document.getElementById('edit_form_data-de-atendimento_0_year').selectedIndex = document.getElementById('edit_form_data-de-atendimento_0_year').childElementCount - 1"
+    )
+    driver.execute_script(
+        f"document.getElementById('edit_form_data-de-atendimento_0_month').selectedIndex = {month}"
+    )
+    driver.execute_script(
+        f"document.getElementById('edit_form_data-de-atendimento_0_day').selectedIndex = {day}"
     )
 
     # Seleciona a modalidade do atendimento
-    radio_modalidade = ""
-
-    if modalidade == "PRESENCIAL":
-        radio_modalidade = "document.getElementById('modalidade-de-atendimento_1')"
-    else:
-        radio_modalidade = "document.getElementById('modalidade-de-atendimento_2')"
-
     driver.execute_script(
-        f"""
-            {radio_modalidade}.checked = true
-        """
+        f"document.getElementById('modalidade-de-atendimento_{1 if (modalidade == 'PRESENCIAL' or modalidade == '') else 2}').checked = true"
     )
 
     # Verifica tipo de usuário
     is_cnpj = len(cpf) == 18
-
-    if is_cnpj:
-        driver.execute_script(
-            "document.getElementById('tipo-de-usuario').selectedIndex = 2"
-        )
-    else:
-        driver.execute_script(
-            "document.getElementById('tipo-de-usuario').selectedIndex = 1"
-        )
+    driver.execute_script(
+        f"document.getElementById('tipo-de-usuario').selectedIndex = {2 if is_cnpj else 1}"
+    )
 
     # Seleciona "sim" para atendimento conclusivo
     driver.execute_script(
-        """
-            let atendimento_conclusivo = document.getElementById('o-atendimento-prestado-foi-conclusivo')
-                                
-            atendimento_conclusivo.selectedIndex = 1
-        """
+        "document.getElementById('o-atendimento-prestado-foi-conclusivo').selectedIndex = 1"
     )
 
     # Seleciona tipo de atendimento
     container_tipos_de_servico = driver.find_element(By.ID, "tipo-de-atendimento")
-
     tipos_de_servico_rfb = container_tipos_de_servico.find_elements(
         By.TAG_NAME, "label"
     )
 
     for tipo_de_servico_rfb in tipos_de_servico_rfb:
         texto_servico = tipo_de_servico_rfb.text
-
         if servico_atendimento == texto_servico:
             tipo_de_servico_rfb.click()
 
+    # Seleciona o tipo de atendimento "Outros"
     driver.execute_script(
-        """
-            let outro_checkbox = document.getElementById('tipo-de-atendimento_23')
-
-            outro_checkbox.checked = true
-        """
+        "document.getElementById('tipo-de-atendimento_23').checked = true"
     )
 
-    # Escreve a especificação do atendimeto
+    # Escreve a especificação do atendimento
     driver.execute_script(
-        f"""
-            let input_descricao = document.getElementById('se-respondeu-outro-especifique-aqui')
-
-            input_descricao.value = '{historico_atendimento}'
-        """
+        f"document.getElementById('se-respondeu-outro-especifique-aqui').value = '{historico_atendimento}'"
     )
 
-    # Clica no butão de enviar
+    # Clica no botão de enviar
     # driver.execute_script("document.querySelector('.formControls > input.context').click()")
 
 
-def tirar_print(driver, save_path):
-    driver.execute_script("document.querySelector('header#site-header').remove()")
-    driver.execute_script("document.querySelector('nav.govbr-skip-menu').remove()")
-    driver.execute_script("document.querySelector('footer#portal-footer').remove()")
-    time.sleep(5)
+def takeScreenshot(driver, save_path):
+    elements_to_remove = [
+        "header#site-header",
+        "nav.govbr-skip-menu",
+        "footer#portal-footer",
+    ]
+
+    for element in elements_to_remove:
+        driver.execute_script(f"document.querySelector('{element}').remove()")
 
     driver.save_full_page_screenshot(
         os.path.join(save_path, f"screenshot-{int(time.time())}.png")
@@ -155,7 +124,7 @@ def tirar_print(driver, save_path):
 def main():
     atendimentos_path = input("Caminho para o arquivo .csv: ")
 
-    atendimentos = [item[1] for item in pd.read_csv(atendimentos_path).iterrows()]
+    atendimentos = pd.read_csv(atendimentos_path).to_numpy()
 
     prints_path = makeDir("prints")
 
@@ -180,13 +149,12 @@ def main():
     for atendimento in atendimentos:
         historico_atendimento = atendimento[5]
 
-        if atendimentoValido(atendimento):
-            preencher_formulario(driver, atendimento)
-
+        if isValidAtendimento(atendimento):
+            fillForm(driver, atendimento)
             time.sleep(5)
 
             # Tira screenshot da página de confirmação
-            tirar_print(driver, prints_path)
+            takeScreenshot(driver, prints_path)
         else:
             # print(f"Não conclusivo ou já enviado - {historico_atendimento}")
             continue
