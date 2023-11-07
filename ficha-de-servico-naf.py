@@ -7,7 +7,6 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 
 
-# TODO: marcar atendimento como enviado no arquivo .csv
 # TODO: prints em pastas da data de envio
 
 URL_RFB = "https://www.gov.br/receitafederal/pt-br/assuntos/educacao-fiscal/educacao-fiscal/naf/naf-questionarios/questionario-servico-prestado"
@@ -140,7 +139,7 @@ def takeScreenshot(driver, save_path):
 def main():
     atendimentos_path = getCsvFile()
 
-    atendimentos = pd.read_csv(atendimentos_path).to_numpy()
+    atendimentos = pd.read_csv(atendimentos_path)
 
     prints_path = makeDir("prints")
 
@@ -162,9 +161,14 @@ def main():
     time.sleep(5)
 
     # Loop sobre todos os atendimentos para lançamento
-    for atendimento in atendimentos:
+    for i, atendimento in atendimentos.iterrows():
         if isValidAtendimento(atendimento):
             fillForm(driver, atendimento)
+
+            # Marca o atendimento como enviado
+            # (NÃO TEM RELAÇÃO COM A PLANILHA NO GOOGLE DRIVE)
+            atendimentos.at[i, "Lançado no site RFB"] = "SIM"
+
             time.sleep(5)
 
             # Tira screenshot da página de confirmação
@@ -174,6 +178,11 @@ def main():
             continue
 
         driver.get(URL_RFB)
+
+    # Substitui o arquivo utilizado com lançamentos já lançados
+    # para evitar que ele seja reutilizado.
+
+    atendimentos.to_csv(atendimentos_path, index=False)
 
     print("Fechando navegador...")
     driver.close()
