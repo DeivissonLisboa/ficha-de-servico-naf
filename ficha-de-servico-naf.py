@@ -2,12 +2,11 @@ import os
 import platform
 import time
 import pandas as pd
+from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 
-
-# TODO: prints em pastas da data de envio
 
 URL_RFB = "https://www.gov.br/receitafederal/pt-br/assuntos/educacao-fiscal/educacao-fiscal/naf/naf-questionarios/questionario-servico-prestado"
 
@@ -121,7 +120,15 @@ def fillForm(driver, atendimento):
     # driver.execute_script("document.querySelector('.formControls > input.context').click()")
 
 
-def takeScreenshot(driver, save_path):
+def takeScreenshot(driver):
+    prints_folder_path = makeDir(f"prints")
+
+    today = datetime.today().strftime("%d-%m-%Y")
+
+    today_prints_path = makeDir(os.path.join(prints_folder_path, today))
+
+    print_path = os.path.join(today_prints_path, f"screenshot-{int(time.time())}.png")
+
     elements_to_remove = [
         "header#site-header",
         "nav.govbr-skip-menu",
@@ -131,17 +138,13 @@ def takeScreenshot(driver, save_path):
     for element in elements_to_remove:
         driver.execute_script(f"document.querySelector('{element}').remove()")
 
-    driver.save_full_page_screenshot(
-        os.path.join(save_path, f"screenshot-{int(time.time())}.png")
-    )
+    driver.save_full_page_screenshot(print_path)
 
 
 def main():
     atendimentos_path = getCsvFile()
 
     atendimentos = pd.read_csv(atendimentos_path)
-
-    prints_path = makeDir("prints")
 
     geckodriver_path = getGeckodriverPath()
 
@@ -168,11 +171,12 @@ def main():
             # Marca o atendimento como enviado
             # (NÃO TEM RELAÇÃO COM A PLANILHA NO GOOGLE DRIVE)
             atendimentos.at[i, "Lançado no site RFB"] = "SIM"
+            atendimentos.to_csv(atendimentos_path, index=False)
 
             time.sleep(5)
 
             # Tira screenshot da página de confirmação
-            takeScreenshot(driver, prints_path)
+            takeScreenshot(driver)
         else:
             # Não conclusivo ou já enviado
             continue
@@ -181,8 +185,6 @@ def main():
 
     # Substitui o arquivo utilizado com lançamentos já lançados
     # para evitar que ele seja reutilizado.
-
-    atendimentos.to_csv(atendimentos_path, index=False)
 
     print("Fechando navegador...")
     driver.close()
